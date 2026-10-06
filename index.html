@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ECS Network Infrastructure — Тренажёр</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f4f5f2; --card:#ffffff; --ink:#15181d; --muted:#5c636e; --line:#e2e4e0;
+  --accent:#17844a; --accent-ink:#0c5a31; --wrong:#c8362f; --wrong-bg:#fbeceb;
+  --ok-bg:#e9f5ee; --amber:#c87a10; --shadow:0 1px 2px rgba(20,24,28,.06),0 6px 20px rgba(20,24,28,.05);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#0f1216; --card:#171b21; --ink:#e9ebee; --muted:#9aa2ad; --line:#272c34;
+  --accent:#2bb56a; --accent-ink:#2bb56a; --wrong:#e06a63; --wrong-bg:#2a1816; --ok-bg:#132619;
+  --amber:#e0a44a; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --paper:#0f1216; --card:#171b21; --ink:#e9ebee; --muted:#9aa2ad; --line:#272c34;
+  --accent:#2bb56a; --wrong:#e06a63; --wrong-bg:#2a1816; --ok-bg:#132619; --amber:#e0a44a;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:660px; margin:0 auto; padding:20px 16px 80px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+button{font-family:inherit; cursor:pointer}
+.hidden{display:none !important}
+
+/* header */
+.top{display:flex; align-items:center; gap:10px; margin:6px 2px 22px}
+.badge{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.top h1{font-size:17px;font-weight:600;margin:0;letter-spacing:-.01em}
+.top .sub{font-size:12.5px;color:var(--muted);margin-top:1px}
+.theme-btn{margin-left:auto;background:none;border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;padding:6px 9px;font-size:13px}
+
+/* home */
+.lead{color:var(--muted);font-size:14.5px;margin:0 2px 18px}
+.mode{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:16px 16px;margin-bottom:12px;box-shadow:var(--shadow);
+  transition:border-color .12s,transform .05s}
+.mode:active{transform:translateY(1px)}
+.mode:hover{border-color:var(--accent)}
+.mode .mh{display:flex;align-items:center;gap:10px}
+.mode .mt{font-weight:600;font-size:16px}
+.mode .tag{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--accent-ink);
+  background:var(--ok-bg);border-radius:999px;padding:3px 9px}
+:root[data-theme="dark"] .mode .tag{color:var(--accent)}
+.mode .md{color:var(--muted);font-size:13.5px;margin-top:6px}
+.best{font-size:12.5px;color:var(--muted);margin:2px 2px 16px;text-align:center}
+
+.secgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.secbtn{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 12px;
+  text-align:left;box-shadow:var(--shadow)}
+.secbtn:hover{border-color:var(--accent)}
+.secbtn .sn{font-size:12px;color:var(--muted)}
+.secbtn .st{font-weight:600;font-size:14px;margin-top:2px;line-height:1.25}
+.backlink{background:none;border:none;color:var(--accent);font-size:14px;padding:8px 0;font-weight:500}
+
+/* quiz bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);
+  padding:8px 0 10px;margin:-4px 0 4px}
+.bar .row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.counter{font-size:13px;color:var(--muted);font-weight:500}
+.timer{margin-left:auto;font-size:15px;font-weight:600;background:var(--card);border:1px solid var(--line);
+  border-radius:8px;padding:4px 10px;letter-spacing:.02em}
+.timer.warn{color:var(--amber);border-color:var(--amber)}
+.timer.danger{color:#fff;background:var(--wrong);border-color:var(--wrong)}
+.quit{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font-size:13px}
+.progress{height:5px;background:var(--line);border-radius:999px;overflow:hidden}
+.progress>i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+
+/* question card */
+.qcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 16px 16px;
+  box-shadow:var(--shadow);margin-top:10px}
+.qid{font-size:12px;color:var(--muted);margin-bottom:8px}
+.qid b{color:var(--accent);font-weight:600}
+.qtext{font-size:16.5px;font-weight:500;line-height:1.45;margin-bottom:14px}
+.opt{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;background:var(--card);
+  border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px;font-size:15px;
+  color:var(--ink);transition:border-color .1s,background .1s}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt .key{flex:none;width:24px;height:24px;border-radius:6px;border:1.5px solid var(--line);
+  display:grid;place-items:center;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:1px}
+.opt.sel{border-color:var(--accent)}
+.opt.sel .key{background:var(--accent);border-color:var(--accent);color:#fff}
+.opt.correct{border-color:var(--accent);background:var(--ok-bg)}
+.opt.correct .key{background:var(--accent);border-color:var(--accent);color:#fff}
+.opt.incorrect{border-color:var(--wrong);background:var(--wrong-bg)}
+.opt.incorrect .key{background:var(--wrong);border-color:var(--wrong);color:#fff}
+.opt:disabled{cursor:default}
+.exp{margin-top:4px;border-left:3px solid var(--accent);background:var(--ok-bg);border-radius:0 8px 8px 0;
+  padding:10px 12px;font-size:13.5px;color:var(--ink)}
+.exp.bad{border-left-color:var(--wrong);background:var(--wrong-bg)}
+.exp b{display:block;margin-bottom:3px;font-size:12.5px}
+
+.nav{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:disabled{opacity:.4}
+.btn.ghost{background:var(--card);border:1px solid var(--line);color:var(--ink);flex:none;padding:13px 16px}
+
+/* results */
+.ring{width:132px;height:132px;margin:8px auto 10px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .ctr{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .pct{font-size:30px;font-weight:700;line-height:1}
+.ring .pl{font-size:12px;color:var(--muted);margin-top:3px}
+.verdict{text-align:center;font-size:20px;font-weight:700;margin:4px 0}
+.verdict.pass{color:var(--accent)}
+.verdict.fail{color:var(--wrong)}
+.rstat{text-align:center;color:var(--muted);font-size:14px;margin-bottom:18px}
+.rev{margin-top:18px}
+.rev h3{font-size:14px;color:var(--muted);font-weight:600;margin:0 2px 10px}
+.ritem{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:var(--shadow)}
+.ritem .rq{font-size:14.5px;font-weight:500;margin-bottom:8px}
+.ritem .ra{font-size:13.5px;display:flex;gap:8px;align-items:flex-start;margin-top:4px}
+.ritem .ra .m{flex:none;font-weight:600}
+.ra.good .m{color:var(--accent)} .ra.bad .m{color:var(--wrong)}
+.ritem .rexp{font-size:13px;color:var(--muted);margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
+.filter{display:flex;gap:8px;margin-bottom:12px}
+.filter button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);
+  border-radius:9px;padding:8px;font-size:13px;font-weight:500}
+.filter button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="badge">ECS</div>
+    <div>
+      <h1>Network Infrastructure Awareness</h1>
+      <div class="sub">Тренажёр · банк из 145 вопросов</div>
+    </div>
+    <button class="theme-btn" id="theme">◐</button>
+  </div>
+  <div id="app"></div>
+  <footer>
+    Неофициальный учебный тренажёр по открытому ревизионному пособию ECS.<br>
+    Вопросы и ответы — на английском, как на реальном экзамене.
+  </footer>
+</div>
+
+<script>
+const DATA = [{"sec": 1, "id": "1.01", "q": "When considering fire performance, telecommunication cables installed inside a building shall meet the following requirements:", "opts": ["Euro Class Cca‑s1b,d2,a2", "Euro Class Dca‑s1b,d2,a2", "Euro Class Eca‑s1b,d2,a2", "Euro Class Fca‑s1b,d2,a2"], "a": 0, "exp": "The CPR / EuroClass system ensures the right cable type is installed in the right area. Minimum inside a building is Cca‑s1b,d2,a2."}, {"sec": 1, "id": "1.02", "q": "When considering fire performance, which type of cable produces the least amount of smoke when burning:", "opts": ["Eca", "Cca s1b d2 a2", "B2Ca s1a d1 a1", "Dca s2 d2 a2"], "a": 2, "exp": "The 's' indicates smoke produced. 1a is the least, then 1b, 1, 2, and finally 3 (most smoke)."}, {"sec": 1, "id": "1.03", "q": "Which is NOT a Telecommunication cable?", "opts": ["Cat 5e 4 pair data cable", "3 core 13 amp 230 volt mains cable", "1308 3 pair telephone cable", "2 pair intruder alarm cable"], "a": 1, "exp": "A 230V mains power cable is not a telecommunication cable. Correct cable selection is the installer's responsibility."}, {"sec": 1, "id": "1.04", "q": "Cables installed outside buildings and other structures, not installed in ducts, conduit or another type of cover shall meet the following requirements:", "opts": ["UV resistant cables with weather resistant, protective outer sheaths", "White cables", "Minimum of Cat 5e and S/FTP", "Minimum of Cat 6 and F/FTP"], "a": 0, "exp": "Exposed external cables need extra protection from sunlight and weather; the sheath is treated for wear resistance."}, {"sec": 1, "id": "1.05", "q": "The length of a Class Ea permanent link should not exceed:", "opts": ["55 metres", "90 metres", "100 metres", "1000 metres"], "a": 1, "exp": "The Ea permanent link is the performance of the permanently installed cable — maximum 90 m."}, {"sec": 1, "id": "1.06", "q": "The length of a Class Ea channel should not exceed:", "opts": ["55 metres", "90 metres", "100 metres", "1000 metres"], "a": 2, "exp": "The channel is the permanent link plus a patch cord at each end (90 + 10), maximum 100 m."}, {"sec": 1, "id": "1.07", "q": "The length of a Class Ea channel with patch cords exceeding 20 metres should not exceed:", "opts": ["80 metres", "90 metres", "95 metres", "100 metres"], "a": 2, "exp": "Where long patch cords are used the channel distance is shorter (95 m) due to the different electrical characteristics of patch cords."}, {"sec": 1, "id": "1.08", "q": "The rack bonding conductors for a cabinet, frame or rack of ≤ 21 U, shall have a cross‑sectional area in accordance with HD 60364‑5‑54 and shall be:", "opts": ["Minimum CSA of 2.5 mm²", "Minimum CSA of 4 mm²", "Minimum CSA of 10 mm²", "Minimum CSA of 16 mm²"], "a": 1, "exp": "Earth cables that are incorrectly sized are a safety issue — always check requirements. ≤ 21 U = 4 mm²."}, {"sec": 1, "id": "1.09", "q": "The rack bonding conductors for a cabinet, frame or rack of > 21 U, shall have a cross‑sectional area in accordance with HD 60364‑5‑54 and shall be:", "opts": ["Minimum CSA of 2.5 mm²", "Minimum CSA of 10 mm²", "Minimum CSA of 4 mm²", "Minimum CSA of 16 mm²"], "a": 3, "exp": "> 21 U requires a 16 mm² bonding conductor."}, {"sec": 1, "id": "1.10", "q": "A wall mounted 12 U communication cabinet with a glass door needs an earth bond of:", "opts": ["It does not need one", "Minimum CSA of 2.5 mm²", "Minimum CSA of 4 mm²", "Minimum CSA of 10 mm²"], "a": 2, "exp": "A cabinet ≤ 21 U requires a 4 mm² earth bond."}, {"sec": 1, "id": "1.11", "q": "Which of the following ethernet standards is supported by Cat 5e?", "opts": ["100baseSX", "100baseT", "10base2", "10base5"], "a": 1, "exp": "Cat 5e supports 100baseT. If unsure which cable you are installing, speak to your designer."}, {"sec": 1, "id": "1.12", "q": "Which cable type should be installed to supply a 10 Gbs link over 500 metres?", "opts": ["Co‑ax cable", "Fibre Optic cable", "Cat 6A cable", "Cat 7 cable"], "a": 1, "exp": "Cat 6a / Cat 7 could carry the speed but not over this distance, so a fibre link is required."}, {"sec": 1, "id": "1.13", "q": "Which cable type should be installed to supply a 10 Gbs link over 2000 metres?", "opts": ["Multi‑mode fibre optic cable OM2", "Multi‑mode fibre optic cable OM4", "Single‑mode fibre optic cable", "Co‑ax cable"], "a": 2, "exp": "OM4 could carry the speed but not the distance, so a single‑mode link is required."}, {"sec": 1, "id": "1.14", "q": "Which of the following is NOT a standard size of fibre optic cable?", "opts": ["9/125", "50/125", "62.5/125", "100/125"], "a": 3, "exp": "9/125 is single mode; 50/125 and 62.5/125 are multi mode. 100/125 is not a standard core/cladding size."}, {"sec": 1, "id": "1.15", "q": "What does the \"CPR\" in the construction industry stand for?", "opts": ["Cable Product Regulations", "Construction Product Requirements", "Construction Product Regulations", "Construction Protection Regulations"], "a": 2, "exp": "Construction Products Regulations provide a common technical language to assess performance of construction products, including data cabling."}, {"sec": 1, "id": "1.16", "q": "What does the \"DoP\" in the construction industry stand for?", "opts": ["Declaration of Product", "Details of Performance", "Declaration of Personnel", "Declaration of Performance"], "a": 3, "exp": "The Declaration of Performance describes a product's characteristics in relation to its fire resistance."}, {"sec": 1, "id": "1.17", "q": "The CE marking is required for many products. It shows that these:", "opts": ["Meet worldwide requirements", "Were made in the European Union", "Meet EU performance requirements", "Meet EU safety, health or environmental requirements"], "a": 3, "exp": "CE marking indicates conformity with health, safety and environmental protection standards for products sold in the EEA."}, {"sec": 2, "id": "2.01", "q": "BS EN 50174‑2 states the minimum bend radius for 4‑pair balanced cables shall be:", "opts": ["Four times the cable diameter", "Eight times the cable diameter", "Twelve times the cable diameter", "Ten times the cable diameter"], "a": 1, "exp": "For 4‑pair balanced cable the minimum bend radius is 8× the cable diameter. Exceeding it degrades performance."}, {"sec": 2, "id": "2.02", "q": "BS EN 50174‑2 states the minimum bend radius for optical fibre cables and coaxial cables shall be:", "opts": ["Four times the cable diameter", "Eight times the cable diameter", "Ten times the cable diameter", "Twelve times the cable diameter"], "a": 2, "exp": "For optical fibre and coaxial cable the minimum bend radius is 10× the cable diameter."}, {"sec": 2, "id": "2.03", "q": "U or RU is a measurement of height of equipment designed to fit into a 19 inch rack. 1U =", "opts": ["50 mm or 2 inches", "30 mm or 1 inch", "25 mm or 1 inch", "44.45 mm or 1.75 inches"], "a": 3, "exp": "1U = 44.45 mm (1.75 inches), the standard rack unit height."}, {"sec": 2, "id": "2.04", "q": "A cable management system:", "opts": ["Includes ducts and tubes housing, or intended to house, blown IT cables and/or cable elements", "Does not include ducts and tubes", "Does not include tubes housing blown IT cables and/or cable elements", "Includes the boxes or drums the cables are delivered in"], "a": 0, "exp": "A cable management system is anything designed to contain or support cabling along its route, including ducts and tubes."}, {"sec": 2, "id": "2.05", "q": "The grids of suspended ceilings shall:", "opts": ["Not be used as support for pathway systems", "Be used as support for multiple cables", "Be used as support for devices within the suspended ceiling", "Be used as support for pathway systems"], "a": 0, "exp": "It is not good practice to loose‑lay cables above suspended ceilings; containment should be fixed to the fabric of the building."}, {"sec": 2, "id": "2.06", "q": "Bonding between sections of metallic containment shall be carried out in accordance with:", "opts": ["BS 50174‑2", "ISO 11801", "BS EN 57921", "BS EN 50173"], "a": 0, "exp": "Bonding between sections of metallic containment is carried out in accordance with BS 50174‑2."}, {"sec": 2, "id": "2.07", "q": "According to BS EN 50174, the location of cabinets, frames and racks shall:", "opts": ["Provide a minimum clearance of 1 m on all faces where access is required", "Provide a minimum clearance of 1.2 m on all faces", "Provide a minimum clearance of 1.2 m on all faces where access is required", "Provide a minimum clearance of 2 m on all faces where access is required"], "a": 2, "exp": "Minimum clearance is 1.2 m on all faces where access is required."}, {"sec": 2, "id": "2.08", "q": "According to BS EN 50174, cabinets, frames and racks shall NOT be installed:", "opts": ["Outside", "On a roof", "In toilet facilities", "In a basement"], "a": 2, "exp": "Cabinets, frames and racks shall not be installed in toilet facilities."}, {"sec": 2, "id": "2.09", "q": "According to BS EN 50174, pathways constructed using tray‑work shall be located to:", "opts": ["Be fixed flush to the fixing surface", "Provide a minimum clearance of 50 mm from the fixing surface", "Provide a minimum clearance of 25 mm from the fixing surface", "Not provide a minimum clearance of 25 mm from the fixing surface"], "a": 2, "exp": "Tray‑work pathways provide a minimum clearance of 25 mm from the fixing surface."}, {"sec": 2, "id": "2.10", "q": "According to BS EN 50174, indoor pathways constructed using conduit systems with bends should provide access at intervals of:", "opts": ["Not greater than 12 m to enable the use of draw‑boxes", "Not greater than 90 m to enable the use of draw‑boxes", "Greater than 12 m to enable the use of draw‑boxes", "Greater than 20 m to enable the use of draw‑boxes"], "a": 0, "exp": "Access should be provided at intervals not greater than 12 m to enable the use of draw‑boxes."}, {"sec": 2, "id": "2.11", "q": "According to BS EN 50174, for pathway systems providing non‑continuous support (e.g. basket, ladder or hooks) where manufacturer's instructions do not exist:", "opts": ["Max distance between supporting elements is 500 mm", "Max distance between supporting elements is 1000 mm", "Max distance between supporting elements is 2000 mm", "Max distance between supporting elements is 1500 mm"], "a": 3, "exp": "For non‑continuous support, the maximum distance between supporting elements is 1500 mm."}, {"sec": 2, "id": "2.12", "q": "According to BS EN 50174, for pathway systems providing continuous support (e.g. trays) where manufacturer's instructions do not exist:", "opts": ["The stacking height shall not exceed 50 mm", "The stacking height shall not exceed 100 mm", "The stacking height shall not exceed 150 mm", "The stacking height shall not exceed 500 mm"], "a": 2, "exp": "For continuous support (trays), the stacking height shall not exceed 150 mm."}, {"sec": 2, "id": "2.13", "q": "The selection of cable management systems shall take into account which standard:", "opts": ["The MICE environmental classification of BS 50310", "The MICE environmental classification of BS 50173", "The MICE environmental classification of BS 6701", "The MICE environmental classification of BS 50174"], "a": 1, "exp": "The MICE environmental classification is defined in BS 50173."}, {"sec": 2, "id": "2.14", "q": "According to BS EN 50174, conduits shall not:", "opts": ["Contain more than three bends of up to 90° max. between pulling points", "Contain more than four bends of up to 90° max. between pulling points", "Contain more than two bends of up to 90° max. between pulling points", "Contain more than one bend of up to 90° max. between pulling points"], "a": 2, "exp": "Conduits shall not contain more than two 90° bends between pulling points, or cables can snag/stretch."}, {"sec": 2, "id": "2.15", "q": "According to BS EN 50174, conduits shall not:", "opts": ["Be subject to cumulative changes in direction of more than 90° between pulling points", "Be subject to cumulative changes in direction of more than 180° between pulling points", "Be subject to cumulative changes in direction of more than 270° between pulling points", "Be subject to cumulative changes in direction of more than 360° between pulling points"], "a": 1, "exp": "Conduits shall not be subject to cumulative changes of direction of more than 180° between pulling points."}, {"sec": 2, "id": "2.16", "q": "According to BS EN 50174, bundles of cables shall not contain more than:", "opts": ["19 cables", "24 cables", "48 cables", "100 cables"], "a": 1, "exp": "Bundles shall not exceed 24 cables; oversized bundles build heat and cause interference."}, {"sec": 2, "id": "2.17", "q": "According to BS EN 50174, when installing in vertical pathways (e.g. risers), cables should be:", "opts": ["Pushed upwards in bundles", "Pulled upwards rather than lowered", "Lowered rather than pulled upwards", "Pulled upwards in bundles"], "a": 2, "exp": "Cables are lowered rather than pulled upwards to minimise strain and reduce the likelihood of damage."}, {"sec": 2, "id": "2.18", "q": "In BS 50173 what does M.I.C.E stand for:", "opts": ["Material, Insulation, Couloir, Effect", "Measure, Insure, Cut, Erect", "Mechanical, Ingress, Climatic/Chemical, Electro Magnetic", "Rodent damage protection level"], "a": 2, "exp": "M.I.C.E = Mechanical, Ingress, Climatic/Chemical, Electro Magnetic."}, {"sec": 2, "id": "2.19", "q": "According to BS EN 50174, the installer shall ensure that:", "opts": ["The pathway systems selected are able to support the mass of the cables to be installed", "The pathway systems selected are the correct colour for the cables", "The pathway systems selected are only for the cables to be installed today", "The pathway systems selected are 100% bigger than cables needs"], "a": 0, "exp": "Pathways must support the mass of the cables installed, or later installs may overload and collapse them."}, {"sec": 2, "id": "2.20", "q": "According to BS EN 50174, the installer shall ensure the fixings and supporting structures for the pathway systems are suitable:", "opts": ["To support the cables to be installed today", "To support the mass of the pathway system", "To support the combined mass of the pathway system and the cables to be installed", "To support the combined mass of the pathway system and the cables to be installed times two"], "a": 3, "exp": "Fixings must support the combined mass of the pathway system and cables × two, to allow for future installs."}, {"sec": 3, "id": "3.01", "q": "Which fibre optic cable has a core size of 50/125 micrometres (µm):", "opts": ["OM1", "OM3", "OS2", "OS1"], "a": 1, "exp": "OM3 has a 50/125 core. OS1/OS2 are 9/125; OM1 is 62.5/125."}, {"sec": 3, "id": "3.02", "q": "Which category cable has a maximum transmission speed of 10000 Mbps / 10 Gbps:", "opts": ["Cat5e", "Cat6", "Cat7", "Cat6a"], "a": 3, "exp": "Cat6a supports up to 10 Gbps. If unsure which cable you are installing, speak to your designer."}, {"sec": 3, "id": "3.03", "q": "Which cable is commonly used for multicore telephone connectivity?", "opts": ["Cat5e", "Cat6a", "CW1308B", "Cat8"], "a": 2, "exp": "CW1308 is the common multicore telephone cable."}, {"sec": 3, "id": "3.04", "q": "Cable jacket colours make it faster to identify cable type. Yellow, for instance, can identify what type of fibre?", "opts": ["Multi‑mode", "OM1", "Single‑mode", "Cat6a"], "a": 2, "exp": "Yellow usually indicates single‑mode. (Orange=OM2, Aqua=OM4, Lime=OM5.) Always confirm by reading the print on the jacket."}, {"sec": 3, "id": "3.05", "q": "If you are using an RJ45 connector, what type of cable are you working with:", "opts": ["Fibre", "Copper", "OS1", "Multi‑mode"], "a": 1, "exp": "An RJ45 (8P8C) connector is used with copper data cable."}, {"sec": 3, "id": "3.06", "q": "Which is the lower value of the bend radius of Cat6 cable?", "opts": ["Minimum bend radius during installation", "Minimum bend radius installed", "Minimum bend radius during termination", "Minimum bend radius during testing"], "a": 1, "exp": "The installed minimum bend radius is the value that must be complied with in the final installation."}, {"sec": 3, "id": "3.07", "q": "In general, the minimum bend radius should not be less than how many times the outer diameter (OD) of a fibre cable:", "opts": ["2", "8", "10", "12"], "a": 2, "exp": "The minimum bend radius for fibre is generally 10× the outer diameter."}, {"sec": 3, "id": "3.08", "q": "To maintain Cat6a performance, minimum bend radius should be how many times the outside diameter (OD) for UTP and shielded cable:", "opts": ["2", "4", "6", "10"], "a": 1, "exp": "Cat6a minimum bend radius is 4× the outside diameter for UTP and shielded cable."}, {"sec": 3, "id": "3.09", "q": "Which cable has a significantly larger minimum bend radius?", "opts": ["5", "5e", "Cat 6", "Cat6a"], "a": 3, "exp": "Cat6a has a significantly larger minimum bend radius than the lower categories."}, {"sec": 3, "id": "3.10", "q": "What is the maximum conduit fill ratio recommended by BS EN 50174 to accommodate bend radius and allow future expansion?", "opts": ["25%", "40%", "60%", "100%"], "a": 1, "exp": "40% fill accounts for bundle bend radius and future expansion. At 40% a conduit already looks nearly full due to gaps."}, {"sec": 3, "id": "3.11", "q": "In relation to pathways and containment, which statement is correct?", "opts": ["Only rolled edge tray should be used for copper cables", "You should always take the most direct route", "Pathways shall have smooth surfaces, free of burrs, sharp edges or projections, and free of pressure points", "There is no need to bond/earth metallic containment"], "a": 2, "exp": "Pathways must have smooth surfaces free of burrs, sharp edges and pressure points that could damage cable insulation."}, {"sec": 3, "id": "3.12", "q": "What factors would determine the choice of cable type/category?", "opts": ["Cost", "Ease of install", "Bandwidth", "What is already installed"], "a": 2, "exp": "The installer's primary driver is providing the required service — bandwidth."}, {"sec": 3, "id": "3.13", "q": "Network connectivity is determined by?", "opts": ["Standards compliance", "Budget", "Client preference", "All factors"], "a": 3, "exp": "A designer considers all of these factors when arriving at the final specification."}, {"sec": 3, "id": "3.14", "q": "Which of these H&S issues could arise when using fibre optic cables?", "opts": ["Electrocution", "Eye damage", "Crush injury", "Back injury"], "a": 1, "exp": "Glass shards and invisible transmitted light can both cause irreparable eye damage without due care."}, {"sec": 3, "id": "3.15", "q": "Which of the following should you affix cables to?", "opts": ["False ceiling grid", "The building structure", "Loose laid within the ceiling void", "Ceiling support wires"], "a": 1, "exp": "Cables must be affixed to the building structure to prevent premature collapse in a fire (BS 7671 / BS 6701)."}, {"sec": 3, "id": "3.16", "q": "What is the maximum untwist advised when terminating jacks and patch panels for Cat 6 cable?", "opts": ["6mm", "12mm", "13mm", "15mm"], "a": 0, "exp": "Maximum untwist for Cat 6 is 6 mm; exceeding twist distances degrades performance."}, {"sec": 3, "id": "3.17", "q": "How much cable slack should be allowed within the cabinet?", "opts": ["As much as is practicable", "4 m", "6 m", "10 m"], "a": 2, "exp": "Around 6 m of slack is good practice — enough for re‑termination/moves without a sea of excess cable."}, {"sec": 3, "id": "3.18", "q": "What is the maximum recommended pulling tension for 24AWG cable?", "opts": ["100 N (22.5 lbf)", "110 N (25 lbf)", "120 N (26.9 lbf)", "125 N (28 lbf)"], "a": 1, "exp": "Maximum recommended pulling tension for 24AWG is 110 N (25 lbf); over‑tension deforms the cable."}, {"sec": 3, "id": "3.19", "q": "What are the benefits of hook and loop ties over plastic ties?", "opts": ["Cheaper", "They come in different colours", "Safer for users and create less pressure points", "Easier to install"], "a": 2, "exp": "Hook and loop create less pressure on cables, are safer (no sharp burrs), and need no trimming."}, {"sec": 3, "id": "3.20", "q": "Over tensioning of copper data cable will cause which issue?", "opts": ["Changes the cable's electrical characteristics", "Changes the cable's category", "Changes the cable's weight", "Changes the cable's colour"], "a": 0, "exp": "Over‑tension stretches/deforms the cable and changes its electrical characteristics, causing test failures."}, {"sec": 4, "id": "4.01", "q": "Is there an industry standard giving guidance on how much slack should be left on installed cables?", "opts": ["Yes as per electrical industry standard", "There are guidelines only", "Yes as per data industry standard", "Yes as per Telecommunications standard"], "a": 1, "exp": "There is no specific standard dictating slack; best practice is to leave enough for re‑termination or minor moves."}, {"sec": 4, "id": "4.02", "q": "What is the purpose of labelling cables?", "opts": ["To identify the wire map", "To identify the length", "To identify the cost of cable", "To identify the individual cable"], "a": 3, "exp": "Labelling lets you identify an individual cable among thousands of identical‑looking ones."}, {"sec": 4, "id": "4.03", "q": "What would be most suitable to secure Cat6a cabling on a horizontal cable tray?", "opts": ["Cable ties", "Hook and loop fastenings", "Metal cable ties", "Nothing"], "a": 1, "exp": "Hook and loop is most suitable — adjustable, less pressure on cables, and lower injury risk."}, {"sec": 4, "id": "4.04", "q": "What is the maximum recommended distance between metal cable ties securing cable in a vertical riser?", "opts": ["every 300 mm", "every 1 m", "every 2 m", "every 3 m"], "a": 2, "exp": "In vertical risers cables are secured more often than horizontal runs — every 2 m."}, {"sec": 4, "id": "4.05", "q": "If using plastic cable ties, how much tension should be applied?", "opts": ["Tension until the cable jacket is squeezed", "Mild tension, enough to hold but not to deform cables", "Tension on all cables using pliers for extra force", "Tension loosely leaving cables space for movement"], "a": 1, "exp": "Apply only mild tension; over‑tightened nylon ties damage cables and affect performance."}, {"sec": 4, "id": "4.06", "q": "Where do pinch points commonly occur?", "opts": ["Pinch points only occur in cable tray installations", "Pinch points only occur in cable ducting installations", "Pinch points only occur during termination", "Pinch points could occur on any part of an installation"], "a": 3, "exp": "Pinch points can occur anywhere two surfaces meet or a gap draws the cable through."}, {"sec": 4, "id": "4.07", "q": "Which of the following statements are true?", "opts": ["All statements", "The labels need to match at each end of the cable", "The labels can be a number, letter or both", "Labels can give details to building/floor/comms"], "a": 0, "exp": "All of these statements about labelling are true."}, {"sec": 4, "id": "4.08", "q": "What should be used to write on temporary labels during installation?", "opts": ["Permanent marker", "Pencil", "Biro", "The same colour"], "a": 0, "exp": "A fine‑point permanent marker won't rub off as the cable is handled and pulled through the building."}, {"sec": 4, "id": "4.09", "q": "Once cable installation is complete, how should cables be permanently identified?", "opts": ["With hand written reference in biro on the cable", "With hand written reference on electrical tape", "With durably affixed and readable labels that are resistant to environmental conditions", "Left to be completed by the customer"], "a": 2, "exp": "Use durably affixed, readable labels that resist environmental conditions."}, {"sec": 4, "id": "4.10", "q": "Which of the following statements apply to cable labels?", "opts": ["Labels should be affixed to the cable sheath", "Labels should contain a unique reference", "Labels should be affixed to termination points", "All statements"], "a": 3, "exp": "All statements apply to cable labels."}, {"sec": 4, "id": "4.11", "q": "Which statement defines the proper requirement for the style of cable labels?", "opts": ["Can be a duplicate of existing schemes", "As per manufacturer's specification", "As specified by the customer in the contract", "Depends on the type of labelling machine used"], "a": 2, "exp": "The labelling style is ultimately specified by the customer in the contract."}, {"sec": 4, "id": "4.12", "q": "What is the maximum bundle size for copper data cables?", "opts": ["24", "50", "72", "100"], "a": 0, "exp": "Maximum bundle size is 24; oversized bundles build heat and interference."}, {"sec": 4, "id": "4.13", "q": "Cable socking should be used for which of the following reasons?", "opts": ["To protect from heat", "To protect against EMI", "To support the cables along their entire length", "To provide neat presentation"], "a": 3, "exp": "Cable socks, used correctly, provide neat presentation; used badly they hinder moves and add heat."}, {"sec": 4, "id": "4.14", "q": "When installing cable socking in cabinets, which of the following should be considered?", "opts": ["Patch panels can be relocated", "Cable IDs can be seen", "Cables from different panels are sleeved separately", "All statements"], "a": 3, "exp": "All of these should be considered when installing cable socking in cabinets."}, {"sec": 5, "id": "5.01", "q": "An IT cable's reaction to fire is classified under which set of statutory regulations?", "opts": ["The Regulatory Reform (Fire Safety) Order 2005", "The Construction Products Regulations 2013", "The Electricity at Work Regulations 1989", "The Building Regulations 2010"], "a": 1, "exp": "An IT cable's reaction to fire is classified under the Construction Products Regulations 2013."}, {"sec": 5, "id": "5.02", "q": "What does the term CPR mean in the context of the fire performance of an IT cable?", "opts": ["Cable Products Regulations", "Construction Products Regulations", "Cable Products Rules", "Construction Products Rules"], "a": 1, "exp": "CPR = Construction Products Regulations — a common technical language to assess performance."}, {"sec": 5, "id": "5.03", "q": "In a new data cable installation the cables installed within a building must meet which CPR Euro classification?", "opts": ["Dca‑s1b,d2,a2", "Fca", "Aca", "Cca‑s1b,d2,a2"], "a": 3, "exp": "New cables within a building must meet Cca‑s1b,d2,a2."}, {"sec": 5, "id": "5.04", "q": "Where MUST the manufacturer display the CPR Euro classification on data cable?", "opts": ["On the CE marked label on the cable reel", "On the manufacturer's website", "On the manufacturer's data sheet", "On the cable"], "a": 0, "exp": "It MUST be on the CE marked label on the packaging/reel (it may also appear elsewhere, but the packaging is mandatory)."}, {"sec": 5, "id": "5.05", "q": "Which is NOT a satisfactory method to reduce separation between unscreened metallic IT cables and power cables passing through a structure where a fire barrier is installed?", "opts": ["Cables enclosed in separate metal conduit where they pass through the structure", "Cables enclosed in separate metal trunking where they pass through the structure", "Cables enclosed in a plastic conduit where they pass through the structure", "Cables enclosed in separate metal ducts where they pass through the structure"], "a": 2, "exp": "Plastic containment does not screen cables; metallic containment does."}, {"sec": 5, "id": "5.06", "q": "When installing additional data cable through a fire rated wall, when should a removed fire sealing arrangement be re‑instated?", "opts": ["At the end of the working day", "When the system has been fully commissioned", "As soon as practicable", "On completion of the work"], "a": 2, "exp": "A penetrated fire barrier must be re‑sealed as soon as practicable to limit fire spread risk."}, {"sec": 5, "id": "5.07", "q": "What considerations should be given to fire separating structures when preparing a cable route in a new building?", "opts": ["Openings should be as few as possible", "Openings should be as small as possible", "Openings should be fire stopped", "All statements"], "a": 3, "exp": "All apply — keep openings as few and small as possible and fire stop them."}, {"sec": 5, "id": "5.08", "q": "Which of the following building materials is NOT suitable for sealing openings in a fire separating wall?", "opts": ["Multi‑purpose filler", "Cement mortar", "Mineral fibre", "Gypsum based plaster"], "a": 0, "exp": "Multi‑purpose filler is not suitable for fire rated barriers. When in doubt, seek advice."}, {"sec": 5, "id": "5.09", "q": "Intumescent fire stopping materials are designed to:", "opts": ["Shrink when subject to heat", "Expand when subject to heat", "Expand when subject to gas and smoke", "Prevent transmission of sound"], "a": 1, "exp": "Intumescent materials expand when subject to heat."}, {"sec": 5, "id": "5.10", "q": "If you discover a hole in a fire rated wall that has not been fire stopped, what should you do?", "opts": ["Report it", "Ignore it", "Find some fire stop material and fill the gap", "Use decorators sealant to fill the gap"], "a": 0, "exp": "Report it — fire stopping must be installed and checked by a qualified, certified person."}, {"sec": 5, "id": "5.11", "q": "You are preparing to install IT cables into an existing pathway appropriately sealed with fire stop materials. How should you proceed?", "opts": ["Remove and dispose of existing firestop materials", "Prepare existing penetrations by removing firestop materials and store them in a safe place for re‑installation", "Avoid the existing route and create new", "Cables should be routed to avoid fire separating structures"], "a": 1, "exp": "Some firestop systems are removable and reusable — remove carefully and store for re‑installation."}, {"sec": 5, "id": "5.12", "q": "A trunking passing through a fire rated wall does not require internal fire seals if the maximum internal cross‑sectional area is not greater than:", "opts": ["710 mm² (32 mm diameter conduit or 25×25 trunking permitted)", "1070 mm²", "1710 mm²", "7100 mm²"], "a": 0, "exp": "BS 7671: openings with a surface area smaller than 710 mm² do not require internal fire seals."}, {"sec": 5, "id": "5.13", "q": "Which cable support products should be used to prevent premature collapse in the event of a fire?", "opts": ["Wall mounted plastic trunking", "Plastic cable tray suspended from the ceiling", "Non‑metallic cable ties", "Steel cable ties"], "a": 3, "exp": "Steel cable ties won't melt — but they must be secured to the fabric of the building."}, {"sec": 5, "id": "5.14", "q": "Temporary sealing of fire rated structures may be necessary in which situation:", "opts": ["On completion of the cabling system", "On completion and handover of the building", "During the commissioning of services", "During the installation process"], "a": 3, "exp": "Temporary sealing is permissible during installation; once complete, all openings must be permanently sealed."}, {"sec": 6, "id": "6.01", "q": "When installing cable from a drum, what is the minimum number of people required to carry out the task?", "opts": ["1", "2", "3", "4"], "a": 1, "exp": "At least 2: one controls the drum speed, one pulls the cable (more may be needed for the route)."}, {"sec": 6, "id": "6.02", "q": "What is the correct action to take when friction damage is noticed when pulling cable from a box?", "opts": ["Stop, cut the cable after the damage and carry on", "Make a note of which cable it is so you can check the test results later", "Stop, work your way back down the pathway to identify where the damage is being caused and repair it. The damaged cable must be replaced", "Carry on, it is only friction on the sheath"], "a": 2, "exp": "Stop, trace and fix the cause (usually rough containment), and replace the damaged cable."}, {"sec": 6, "id": "6.03", "q": "If a cable drum has been significantly damaged so that cable can be clearly seen inside the drum, which action should be taken?", "opts": ["Use the drum, but stand clear whilst it is spinning", "Use the cable, but remove from drum manually without spinning", "Do not use and report to supervisor", "Repair the drum and use as normal"], "a": 2, "exp": "Heavily damaged drum = uncertain cable quality — do not use, report it."}, {"sec": 6, "id": "6.04", "q": "If a cable drum is heavily splintered around the edge, which action should be taken?", "opts": ["Use it as it is, but stand at a safe distance while the drum is spinning", "Do not use it", "Return to stock and use another drum", "If damage does not extend to the cable, wear gloves and use an appropriate tool to remove the splinters before using drum as normal"], "a": 3, "exp": "If the cable is unaffected, remove loose splinters (gloves + tool) before use; splintering increases injury risk."}, {"sec": 6, "id": "6.05", "q": "Which of the following is the correct method for pulling cable off a wooden drum:", "opts": ["Suspend the cable drum on a tied‑off rope", "Suspend the cable drum on a metal A frame and spindle", "Suspend the cable drum between two chairs and a broom handle", "Suspend the cable drum between two chairs and length of steel conduit"], "a": 1, "exp": "Use the correct equipment — a metal A frame and spindle. Improvising is dangerous."}, {"sec": 6, "id": "6.06", "q": "What is the maximum number of Cat6A cable drums that an individual should carry at any one time?", "opts": ["None, this should always be a 2‑person lift", "There are no specified limits, it depends on the strength of the individual", "This will be determined in the risk assessment", "No more than 3, to ensure the drums do not block vision when carried"], "a": 2, "exp": "It is a manual handling task — the number is determined by the risk assessment."}, {"sec": 6, "id": "6.07", "q": "What should be done if a stack of cable boxes collapses?", "opts": ["Finish the current cable run and then restack the boxes safely", "Stop the job and report to supervisor", "Replace boxes once fallen boxes are empty", "Stop work immediately and restack the boxes safely"], "a": 3, "exp": "Stop immediately and restack safely — tangled cable risks damage and injury."}, {"sec": 6, "id": "6.08", "q": "What is the minimum number of people required to safely pull in cable from boxes?", "opts": ["1", "2", "3", "4"], "a": 1, "exp": "At least 2 — one controlling the pull, plus help across obstructions."}, {"sec": 6, "id": "6.09", "q": "When loose laying cable in a corridor with a 90 degree corner, what is best practice?", "opts": ["Place someone on the corner to feed the cable", "Pull the entire length around in one go", "Place a drum at the corner to act as strain relief", "Place the box on the corner, pull the cable in one direction then fleet back the rest"], "a": 0, "exp": "Place someone on the corner to feed the cable, keeping it from rubbing and reducing strain."}, {"sec": 6, "id": "6.10", "q": "When is it appropriate to use a knife whilst undertaking installation tasks?", "opts": ["When removing sheath from a cable", "A retractable knife can be used at any time instead of an appropriate tool", "When required in the absence of a screwdriver", "The use of knives should be avoided"], "a": 3, "exp": "The use of knives should be avoided — purpose‑made tools exist for each task."}, {"sec": 6, "id": "6.11", "q": "A cable needs to be pulled between two offices, through a straight run above a false ceiling with cable basket installed. What is the minimum number of people required to pull in correctly?", "opts": ["1", "2", "3", "4"], "a": 2, "exp": "3 — one controlling the pull plus a person either side of the obstruction (wall)."}, {"sec": 6, "id": "6.12", "q": "What can be used to aid pulling in a cable bundle through an enclosed pathway?", "opts": ["Trunking lid", "Stretched out wire coat hanger", "Nylon cable rod", "Broom handle"], "a": 2, "exp": "Use the purpose‑made tool — a nylon cable rod."}, {"sec": 6, "id": "6.13", "q": "What is the correct tool to remove yellow fibrous cable jacket from fibre optic cable?", "opts": ["Utility knife", "Kevlar scissors", "Hacksaw", "Bolt cutters"], "a": 1, "exp": "Kevlar scissors are made for cutting the aramid/Kevlar strength members."}, {"sec": 6, "id": "6.14", "q": "When changing the blade on a hacksaw, which direction should the teeth point?", "opts": ["It doesn't matter", "Forwards", "Backwards", "Depends on the type of hacksaw"], "a": 1, "exp": "Hacksaw blades cut on the forward stroke, so teeth point forwards."}, {"sec": 6, "id": "6.15", "q": "How many Cat6a cables should be installed into 20mm conduit?", "opts": ["2", "6", "12", "24"], "a": 0, "exp": "Online fill calculators (diameter, bend radius, fill capacity) give 2 Cat6a cables in 20 mm conduit."}, {"sec": 6, "id": "6.16", "q": "What is the most suitable containment to run on the wall at desk height in an office to carry 12 Cat 6 cables?", "opts": ["18mm Conduit", "300mm Steel Tray", "100mm×54mm Wire Basket", "50mm×50mm Trunking"], "a": 3, "exp": "50×50 trunking suits an office at desk height; 18 mm conduit can't hold 12 cables, and tray/basket aren't aesthetically suitable."}, {"sec": 6, "id": "6.17", "q": "What is the most appropriate tool to cut excess Cat 6 cable?", "opts": ["Hacksaw", "Jigsaw", "Scissors", "Side cutters"], "a": 3, "exp": "Side cutters are designed to cut small core cables."}, {"sec": 6, "id": "6.18", "q": "What is the most appropriate pen to use to temporarily label a cable when pulling in?", "opts": ["Felt tip", "Fine point permanent marker", "Ball point", "Chalk pen"], "a": 1, "exp": "A fine point permanent marker won't rub off during handling."}, {"sec": 6, "id": "6.19", "q": "Which type of fastening is most appropriate to temporarily dress cables?", "opts": ["Hook and loop", "150mm × 7.6mm Nylon", "Wire ties", "300mm × 13mm Nylon"], "a": 0, "exp": "Hook and loop is easily adjusted for the regular changes made during temporary dressing."}, {"sec": 6, "id": "6.20", "q": "Which is the correct tool to strip the outer sheath of copper data cable?", "opts": ["Cyclops/Rotary stripper", "Stanley knife with fully retractable blade", "Scissors", "Sharp pen knife"], "a": 0, "exp": "Use the purpose‑made tool — a Cyclops/rotary stripper."}, {"sec": 7, "id": "7.01", "q": "What type of gloves should be worn when pulling in data cable?", "opts": ["Leather gloves", "Blue latex gloves", "Correctly fitting EN420 compliant gloves", "Cotton gloves with palm grips"], "a": 2, "exp": "Use correctly fitting EN420 compliant gloves — safety equipment must meet the relevant standard."}, {"sec": 7, "id": "7.02", "q": "PPE is used to protect whom?", "opts": ["The person wearing it and the people in the immediate vicinity", "All people in the vicinity of the installation activities", "The local health & safety representative", "The person wearing it"], "a": 3, "exp": "PPE is PERSONAL Protective Equipment — it protects the user."}, {"sec": 7, "id": "7.03", "q": "When working at height on ladders, the safe angle determined by the base to height ratio should be:", "opts": ["1:2", "1:4", "1:8", "4:1"], "a": 1, "exp": "A 1:4 base‑to‑height ratio minimises the risk of the ladder slipping or falling."}, {"sec": 7, "id": "7.04", "q": "When working at height on step‑ladders and using 2 hands to carry out a task, which safety guidance applies?", "opts": ["Ensure that both feet are on the same step", "Maintain 3 points of contact by using two feet and one hand", "Maintain 3 points of contact by using two feet and a part of the body", "Wear a safety harness attached to the step‑ladder"], "a": 2, "exp": "Keep 3 points of contact — two feet and a part of the body — so both hands can work when safe."}, {"sec": 7, "id": "7.05", "q": "What should be done if a suspected asbestos containing material is identified or suspected?", "opts": ["For low grade asbestos, complete the work activity and sweep up any particles afterwards", "Continue working and use 'wet drilling' methods where penetrations are required", "Stop work, put up a warning sign and prevent anyone else from entering the area", "Stop work and look for an alternative pathway"], "a": 2, "exp": "Stop work, warn others and secure the area. Asbestos can be present in any building built before 2000."}, {"sec": 7, "id": "7.06", "q": "To be suitable, PPE must:", "opts": ["Reduce risk and be comfortable on the wearer", "Reduce risk and be highly visible", "Serviceable, suitable and fit correctly", "Be assessed as appropriate to the risk involved and suitable for the working conditions"], "a": 3, "exp": "PPE must be assessed as appropriate to the risk and suitable for the working conditions (per the risk assessment)."}, {"sec": 7, "id": "7.07", "q": "Which of the following are PPE requirements for pulling in cable on an active construction site?", "opts": ["Hard Hat and Facemask", "Gloves and Glasses", "Safety Boots and Hi Viz Jacket", "All items"], "a": 3, "exp": "All items — the minimum site requirement is hard hat, facemask, gloves, goggles, safety boots and hi‑viz."}, {"sec": 7, "id": "7.08", "q": "What type of safety helmet must you wear when installing cabling at height?", "opts": ["BS EN 397 Compliant helmet", "Company branded helmet", "Black helmet", "Yellow helmet"], "a": 0, "exp": "Use a BS EN 397 compliant helmet — safety equipment must meet the relevant standard."}, {"sec": 7, "id": "7.09", "q": "Whose responsibility is it to provide PPE to an employee?", "opts": ["The employee", "The site storeman", "The employer", "The site Health and Safety advisor"], "a": 2, "exp": "The employer must provide PPE (Health and Safety at Work Act)."}, {"sec": 7, "id": "7.10", "q": "How often should you inspect any ladders or steps you are working on?", "opts": ["Monthly", "Weekly", "Daily before use", "Daily after use"], "a": 2, "exp": "The user should carry out a daily before‑use inspection before climbing."}, {"sec": 7, "id": "7.11", "q": "You are pulling cable into an overhead basket in a large commercial warehouse at 4.8 m above floor level. What would be the best system to use?", "opts": ["Telescopic Ladders", "Mobile steps", "Extendable Ladders", "Mobile Elevated Working Platform (MEWP)"], "a": 3, "exp": "Where space allows, use a more stable platform — a MEWP."}, {"sec": 7, "id": "7.12", "q": "What should be done if the stitching on a safety harness starts to fray?", "opts": ["Report it, use it, leave to one side at the end of the day", "Report it, quarantine it, get another set", "Use it, report it at the end of the day", "Use it, but take extra care"], "a": 1, "exp": "Damaged safety equipment must be removed from use — report it, quarantine it, get another set."}, {"sec": 7, "id": "7.13", "q": "What is the correct action when working at ground level near a large, open pit?", "opts": ["Carry on working as normal", "Stop work until the pit is closed", "Wear suitable equipment for working at height", "Work with extra caution"], "a": 2, "exp": "A possible fall into a pit counts as working at height — select the correct safety equipment."}, {"sec": 7, "id": "7.14", "q": "Which of the following is NOT advised when lifting or carrying equipment?", "opts": ["Carrying items which block your view, without assistance", "Bend your knees, not your back", "Avoid twisting or leaning sideways", "Keep the load close to your waist whilst moving"], "a": 0, "exp": "Never carry items that block your view without assistance."}, {"sec": 7, "id": "7.15", "q": "Which of the following should NOT be done whilst pulling in cables?", "opts": ["Push cables through holes without checking the exit point first", "Pull multiple cables at once", "Work in teams or pairs", "Maintain a clear view of the area being worked on"], "a": 0, "exp": "Always check the exit point first — survey and check the route before pulling."}, {"sec": 7, "id": "7.16", "q": "How should a large communications cabinet be moved?", "opts": ["\"Walk\" it from side to side", "Drag it", "Carry between 2 people", "Follow the Assess, Plan, Prepare, Move procedure"], "a": 3, "exp": "Follow the Assess, Plan, Prepare, Move manual‑handling procedure."}, {"sec": 7, "id": "7.17", "q": "Which is the appropriate way to move a large cable drum?", "opts": ["Wheel it alone", "Drop it on its side and use a set of trolley jacks", "Get a team together, wheel it while one person acts as a banksman", "Drag it using a 4x4"], "a": 2, "exp": "Use a team and a banksman; safety for yourself and others comes first."}, {"sec": 7, "id": "7.18", "q": "You arrive on site and find there is nothing restricting public access to your work area. You should:", "opts": ["Work quickly to minimise the risk", "Use signage and barriers to section off the area, once the area is secure seek guidance to ensure the correct signage has been used", "Tie rope across to stop access", "Make extra noise so people will know you are there"], "a": 1, "exp": "Make the area safe first with signage/barriers, then seek guidance on correct signage."}, {"sec": 7, "id": "7.19", "q": "When starting work in a shared corridor in an office environment, state the correct action if the appropriate signage is not available:", "opts": ["Place available signage in the middle of the work area to give the best chance of being seen", "Be extra vigilant whilst working and verbally warn anyone walking into the area", "Source required signage to properly cordon off the area", "Block off access points with tools or materials"], "a": 2, "exp": "Source the required signage to properly cordon off the area — safety first."}, {"sec": 7, "id": "7.20", "q": "What is the purpose of displaying warning and guarding signs?", "opts": ["To protect the public", "To protect yourself", "To protect yourself, your fellow workers and those who could be affected by your actions", "To protect workers from legal action in case of an accident"], "a": 2, "exp": "To protect yourself, your fellow workers and anyone who could be affected by your actions."}, {"sec": 8, "id": "8.01", "q": "The minimum separation distance recommended between power cables and metal IT cables where the specification/intended application of the IT cables is not known is:", "opts": ["50 mm", "150 mm", "200 mm", "500 mm"], "a": 2, "exp": "Where the IT cable spec is unknown, use the maximum default separation — 200 mm."}, {"sec": 8, "id": "8.02", "q": "What is the maximum distance data cables and screened power cables can be run without separation?", "opts": ["35 m", "40 m", "45 m", "50 m"], "a": 0, "exp": "Data and screened power cables can run together up to 35 m without separation."}, {"sec": 8, "id": "8.03", "q": "What is the minimum recommended separation distance between screened backbone cabling and unscreened power cables, where no divider is provided?", "opts": ["0 mm", "30 mm", "50 mm", "200 mm"], "a": 2, "exp": "With no divider, the minimum separation is 50 mm."}, {"sec": 8, "id": "8.04", "q": "Where it is necessary, network infrastructure cabling should only cross over power cables:", "opts": ["Where separated by a metal divider", "Where screened cables are used", "Where separated by an insulated divider", "At right angles"], "a": 3, "exp": "Cross at right angles (90°) — EMI is strongest when electron flow is parallel and near nil at right angles."}, {"sec": 8, "id": "8.05", "q": "Where metallic IT cables are located close to fluorescent luminaires, it is recommended they are separated by at least:", "opts": ["30 mm", "50 mm", "100 mm", "130 mm"], "a": 3, "exp": "At least 130 mm — fluorescent lights create EMI and power flicker that interferes with data frames."}, {"sec": 8, "id": "8.06", "q": "An adequate separation between telecommunication wiring and power cabling is necessary to:", "opts": ["Allow for future expansion of the telecoms system", "Prevent danger to persons from induced voltages", "Provide adequate working space for maintenance personnel", "So that power and telecoms cable can be clearly identified"], "a": 1, "exp": "Adequate separation prevents danger to persons from induced voltages (as well as protecting signals)."}, {"sec": 8, "id": "8.07", "q": "The standards recommend 50 mm separation when power and telecommunications cabling run in parallel to protect against EMI. What 2 factors are involved?", "opts": ["Power flowing through the power cable and the physical distance from the containment", "The overall length of the power cabling and the telecommunications cabling", "Power flowing through the telecommunications cable and the physical distance from the power cable", "Power flowing through the power cable and the physical distance from the telecommunications cabling"], "a": 3, "exp": "The two factors are the power flowing through the power cable and the physical distance from the telecoms cabling."}, {"sec": 8, "id": "8.08", "q": "Which of the following will NOT prevent electrical interference from reducing the performance of copper data cables?", "opts": ["Installation of screened twisted pair cables", "Installing cables in mechanically and electrically continuous conduit", "Installation of unscreened twisted pair cables", "Physical separation of cables"], "a": 2, "exp": "Unscreened (UTP) cable offers no screening, so it does not prevent interference."}, {"sec": 8, "id": "8.09", "q": "Where a telecommunication cable is to be buried in the ground, which HSE guidance document can help comply with legal obligations?", "opts": ["HSR25", "GS38", "HSG47", "HSG85"], "a": 2, "exp": "HSG47 (avoiding danger from underground services) applies to cable buried in the ground."}, {"sec": 8, "id": "8.10", "q": "Which legal requirement would NOT apply to a telecommunication cable service being buried in the ground near other underground services?", "opts": ["Construction (Design and Management) Regulations 2007", "The Pipelines Safety Regulations 1996", "The Management of Health & Safety at Work Regulations 1999", "Work at Height Regulations 2005"], "a": 3, "exp": "An open trench isn't 'working at height', so the Work at Height Regulations 2005 would not apply."}, {"sec": 8, "id": "8.11", "q": "When preparing to enter cable chambers, what immediate action should be taken?", "opts": ["Put up a workman's tent to shelter from inclement weather", "Remove chamber lids and carry out the installation", "Testing for explosive and noxious gases should be carried out with a portable gas detector", "Wear waterproof clothing"], "a": 2, "exp": "Test for explosive and noxious gases with a portable detector — underground chambers can build up odourless gases."}, {"sec": 8, "id": "8.12", "q": "Where ductwork is to be buried in the ground for telecommunication cables, which colour of duct would NOT be suitable?", "opts": ["Yellow", "White", "Black", "Grey"], "a": 0, "exp": "Yellow is used for gas. The NJUG colour guidance assigns other colours to telecoms."}, {"sec": 8, "id": "8.13", "q": "What is the minimum recommended depth for installing a telecommunication cable where it is to be buried below a footpath?", "opts": ["250 mm–450 mm", "450–600 mm", "500 mm", "600 mm"], "a": 2, "exp": "BS EN 50174‑3 Table 3: minimum recommended depth below a footpath is 500 mm."}, {"sec": 8, "id": "8.14", "q": "Which cable management system can provide protection to data cabling from electromagnetic interference?", "opts": ["Metallic trunking", "Plastic conduit", "Plastic trunking", "Non‑metallic trunking"], "a": 0, "exp": "A correctly installed, earthed metallic system acts as a screen, feeding EMI to earth."}, {"sec": 8, "id": "8.15", "q": "What is the minimum recommended depth for installing a telecommunication cable where it is to be buried below a road or carriageway?", "opts": ["250–350 mm", "750–1200 mm", "600 mm", "750 mm"], "a": 2, "exp": "BS EN 50174‑3 Table 3: minimum recommended depth below a road/carriageway is 600 mm."}, {"sec": 9, "id": "9.01", "q": "Should a construction site have a waste management policy?", "opts": ["Yes but it is advisory only", "Yes and it must be followed", "No but it is good practice", "No it is the responsibility of the individual"], "a": 1, "exp": "Site waste management plans are mandatory for construction sites (DEFRA Waste Strategy) and must be followed."}, {"sec": 9, "id": "9.02", "q": "Where should empty cable boxes be disposed of?", "opts": ["Leave for cleaner", "The recycling skip", "As directed in your company's waste management policy", "The general skip"], "a": 2, "exp": "Follow your company's waste management policy — sites vary in how recycling is handled."}, {"sec": 9, "id": "9.03", "q": "Where should waste cable left on cable drums be disposed of?", "opts": ["Keep for scrap value", "As directed in your company's waste management policy", "The general skip", "The recycling skip"], "a": 1, "exp": "Follow your company's waste management policy."}, {"sec": 9, "id": "9.04", "q": "How should a fibre sharps bin be emptied?", "opts": ["Send away for disposal", "Empty into general skip", "Empty into recycling skip", "Seal them in a bag and put them in a normal bin"], "a": 0, "exp": "Glass shards are specialist waste — send away for disposal by a specialist company."}, {"sec": 9, "id": "9.05", "q": "How should empty wooden drums be disposed of?", "opts": ["As directed in your company's waste management policy", "Break them down before putting in recycling skip", "Put in general site skip", "Sell them"], "a": 0, "exp": "Follow the policy — drums are usually returned to manufacturers for reuse (most eco‑friendly)."}];
+const SECTIONS = {"1": "Выбор продукции", "2": "Кабеленесущие системы", "3": "Прокладка кабеля", "4": "Укладка и маркировка", "5": "Пожарные требования", "6": "Безопасность — кабели", "7": "Безопасность — личная", "8": "Прочие услуги", "9": "Управление отходами"};
+const PASS = 0.8, EXAM_N = 30, EXAM_MIN = 45;
+const KEYS = ["A","B","C","D"];
+let S = null;      // current session
+let timerId = null;
+
+/* ---------- storage (guarded) ---------- */
+function loadBest(){ try{ return JSON.parse(localStorage.getItem("ecs_best")||"null"); }catch(e){ return null; } }
+function saveBest(b){ try{ localStorage.setItem("ecs_best", JSON.stringify(b)); }catch(e){} }
+
+/* ---------- helpers ---------- */
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function el(tag, cls, html){ const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
+function esc(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* prepare a question instance with shuffled options */
+function prep(q){
+  const order = shuffle([0,1,2,3]);
+  return { ref:q, order, correctPos: order.indexOf(q.a), picked:null };
+}
+function startSession(mode, pool, opts){
+  opts = opts||{};
+  const items = pool.map(prep);
+  S = { mode, items, i:0, feedback:opts.feedback!==false, timed:!!opts.timed,
+        secondsLeft: opts.timed ? EXAM_MIN*60 : null, title:opts.title||"" , finished:false };
+  if(S.timed) startTimer();
+  renderQuiz();
+}
+function startTimer(){
+  clearInterval(timerId);
+  timerId=setInterval(()=>{
+    S.secondsLeft--;
+    const t=document.getElementById("timer");
+    if(t){ t.textContent=fmt(S.secondsLeft);
+      t.className="timer"+(S.secondsLeft<=60?" danger":S.secondsLeft<=300?" warn":""); }
+    if(S.secondsLeft<=0){ clearInterval(timerId); finish(); }
+  },1000);
+}
+function fmt(s){ const m=Math.floor(s/60), r=s%60; return m+":"+String(r).padStart(2,"0"); }
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  clearInterval(timerId);
+  const app=document.getElementById("app"); app.innerHTML="";
+  app.appendChild(el("p","lead","Выберите режим. Проходной балл экзамена — <b>80%</b> (24 из 30 вопросов, 45 минут)."));
+
+  const exam=el("button","mode");
+  exam.innerHTML='<div class="mh"><span class="mt">Имитация экзамена</span><span class="tag">как на тесте</span></div>'+
+    '<div class="md">30 случайных вопросов · таймер 45:00 · ответы и разбор в конце · порог 80%</div>';
+  exam.onclick=()=>startSession("exam", shuffle(DATA).slice(0,EXAM_N), {timed:true, feedback:false, title:"Имитация экзамена"});
+  app.appendChild(exam);
+
+  const all=el("button","mode");
+  all.innerHTML='<div class="mh"><span class="mt">Все 145 вопросов</span></div>'+
+    '<div class="md">Весь банк по порядку · моментальная проверка и объяснение после каждого ответа</div>';
+  all.onclick=()=>startSession("all", DATA.slice(), {feedback:true, title:"Все вопросы"});
+  app.appendChild(all);
+
+  const rnd=el("button","mode");
+  rnd.innerHTML='<div class="mh"><span class="mt">Случайная тренировка</span></div>'+
+    '<div class="md">20 случайных вопросов · с проверкой и разбором · без таймера</div>';
+  rnd.onclick=()=>startSession("rnd", shuffle(DATA).slice(0,20), {feedback:true, title:"Случайная тренировка"});
+  app.appendChild(rnd);
+
+  const sec=el("button","mode");
+  sec.innerHTML='<div class="mh"><span class="mt">По разделам</span></div>'+
+    '<div class="md">Отработать одну из 9 тем · с проверкой и разбором</div>';
+  sec.onclick=renderSections;
+  app.appendChild(sec);
+
+  const best=loadBest();
+  if(best){ app.appendChild(el("p","best","Лучший результат экзамена: <b>"+best.pct+"%</b> ("+best.score+"/"+best.total+") · попыток: "+best.attempts)); }
+}
+
+function renderSections(){
+  const app=document.getElementById("app"); app.innerHTML="";
+  const back=el("button","backlink","‹ Назад"); back.onclick=renderHome; app.appendChild(back);
+  app.appendChild(el("p","lead","Выберите раздел для отработки:"));
+  const grid=el("div","secgrid");
+  Object.keys(SECTIONS).forEach(n=>{
+    const cnt=DATA.filter(q=>q.sec==n).length;
+    const b=el("button","secbtn");
+    b.innerHTML='<div class="sn">Раздел '+n+' · '+cnt+' вопр.</div><div class="st">'+esc(SECTIONS[n])+'</div>';
+    b.onclick=()=>startSession("sec"+n, DATA.filter(q=>q.sec==n), {feedback:true, title:"Раздел "+n+": "+SECTIONS[n]});
+    grid.appendChild(b);
+  });
+  app.appendChild(grid);
+}
+
+/* ---------- QUIZ ---------- */
+function renderQuiz(){
+  const app=document.getElementById("app"); app.innerHTML="";
+  const it=S.items[S.i], q=it.ref;
+
+  const bar=el("div","bar");
+  const row=el("div","row");
+  row.appendChild(el("span","counter","Вопрос "+(S.i+1)+" из "+S.items.length));
+  if(S.timed){ const t=el("span","timer"); t.id="timer"; t.textContent=fmt(S.secondsLeft);
+    t.className="timer"+(S.secondsLeft<=60?" danger":S.secondsLeft<=300?" warn":""); row.appendChild(t); }
+  const quit=el("button","quit","Выйти");
+  if(!S.timed) quit.style.marginLeft="auto";
+  quit.onclick=()=>{ if(confirm("Выйти в меню? Прогресс сессии не сохранится.")){ clearInterval(timerId); renderHome(); } };
+  row.appendChild(quit);
+  bar.appendChild(row);
+  const pr=el("div","progress"); pr.appendChild(el("i")); pr.firstChild.style.width=((S.i)/S.items.length*100)+"%";
+  bar.appendChild(pr);
+  app.appendChild(bar);
+
+  const card=el("div","qcard");
+  card.appendChild(el("div","qid",'<b class="mono">'+esc(q.id)+'</b> · '+esc(SECTIONS[q.sec])));
+  card.appendChild(el("div","qtext",esc(q.q)));
+
+  it.order.forEach((origIdx,pos)=>{
+    const o=el("button","opt");
+    o.innerHTML='<span class="key">'+KEYS[pos]+'</span><span>'+esc(q.opts[origIdx])+'</span>';
+    o.onclick=()=>pick(pos,o,card);
+    if(it.picked!=null){
+      if(S.feedback){
+        o.disabled=true;
+        if(pos===it.correctPos) o.classList.add("correct");
+        if(pos===it.picked && pos!==it.correctPos) o.classList.add("incorrect");
+      } else if(pos===it.picked){ o.classList.add("sel"); }
+    }
+    card.appendChild(o);
+  });
+
+  if(it.picked!=null && S.feedback){
+    const ok=it.picked===it.correctPos;
+    const e=el("div","exp"+(ok?"":" bad"));
+    e.innerHTML="<b>"+(ok?"Верно":"Правильный ответ: "+KEYS[it.correctPos])+"</b>"+esc(q.exp);
+    card.appendChild(e);
+  }
+  app.appendChild(card);
+
+  const nav=el("div","nav");
+  if(S.i>0){ const p=el("button","btn ghost","‹"); p.onclick=()=>{ S.i--; renderQuiz(); }; nav.appendChild(p); }
+  const last=S.i===S.items.length-1;
+  const next=el("button","btn primary", last?"Завершить":"Далее ›");
+  next.disabled = it.picked==null;
+  next.onclick=()=>{ if(last) finish(); else { S.i++; renderQuiz(); } };
+  nav.appendChild(next);
+  app.appendChild(nav);
+  window.scrollTo(0,0);
+}
+function pick(pos,node,card){
+  const it=S.items[S.i];
+  if(it.picked!=null && S.feedback) return; // lock after answer in feedback mode
+  it.picked=pos;
+  if(S.feedback){ renderQuiz(); }
+  else{ card.querySelectorAll(".opt").forEach(o=>o.classList.remove("sel")); node.classList.add("sel");
+        const nb=document.querySelector(".btn.primary"); if(nb) nb.disabled=false; }
+}
+
+/* ---------- RESULTS ---------- */
+function finish(){
+  clearInterval(timerId); S.finished=true;
+  const total=S.items.length;
+  const score=S.items.filter(it=>it.picked===it.correctPos).length;
+  const pct=Math.round(score/total*100);
+  const pass=pct>=PASS*100;
+
+  if(S.mode==="exam"){
+    const b=loadBest()||{pct:0,attempts:0};
+    saveBest({ pct:Math.max(b.pct,pct), score, total, attempts:(b.attempts||0)+1 });
+  }
+
+  const app=document.getElementById("app"); app.innerHTML="";
+  const back=el("button","backlink","‹ В меню"); back.onclick=renderHome; app.appendChild(back);
+
+  const C=2*Math.PI*58, off=C*(1-score/total);
+  const col=pass?"var(--accent)":"var(--wrong)";
+  const ring=el("div","ring");
+  ring.innerHTML='<svg width="132" height="132"><circle cx="66" cy="66" r="58" fill="none" stroke="var(--line)" stroke-width="10"/>'+
+    '<circle cx="66" cy="66" r="58" fill="none" stroke="'+col+'" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'"/></svg>'+
+    '<div class="ctr"><div class="pct" style="color:'+col+'">'+pct+'%</div><div class="pl">'+score+" / "+total+'</div></div>';
+  app.appendChild(ring);
+  app.appendChild(el("div","verdict "+(pass?"pass":"fail"), pass?"Сдано":"Не сдано"));
+  let sub = S.title+" · порог 80%";
+  if(S.timed){ const used=EXAM_MIN*60-S.secondsLeft; sub+=" · время "+fmt(Math.max(0,used)); }
+  app.appendChild(el("div","rstat",esc(sub)));
+
+  const nav=el("div","nav");
+  const again=el("button","btn primary","Пройти ещё раз");
+  again.onclick=()=>{
+    if(S.mode==="exam") startSession("exam", shuffle(DATA).slice(0,EXAM_N), {timed:true,feedback:false,title:"Имитация экзамена"});
+    else if(S.mode==="rnd") startSession("rnd", shuffle(DATA).slice(0,20), {feedback:true,title:"Случайная тренировка"});
+    else startSession(S.mode, S.items.map(it=>it.ref), {feedback:true,title:S.title});
+  };
+  const home=el("button","btn ghost","Меню"); home.onclick=renderHome;
+  nav.appendChild(again); nav.appendChild(home); app.appendChild(nav);
+
+  // review
+  const rev=el("div","rev");
+  const h=el("div"); h.style.display="flex"; h.style.alignItems="center";
+  const ht=el("h3","","Разбор ответов"); ht.style.flex="1"; h.appendChild(ht); rev.appendChild(h);
+  const filt=el("div","filter");
+  const bAll=el("button",null,"Все ("+total+")");
+  const wrongN=S.items.filter(it=>it.picked!==it.correctPos).length;
+  const bWrong=el("button",null,"Ошибки ("+wrongN+")");
+  filt.appendChild(bAll); filt.appendChild(bWrong); rev.appendChild(filt);
+  const list=el("div"); rev.appendChild(list);
+  function draw(only){
+    list.innerHTML="";
+    bAll.classList.toggle("on",!only); bWrong.classList.toggle("on",only);
+    S.items.forEach(it=>{
+      const wrong=it.picked!==it.correctPos;
+      if(only&&!wrong) return;
+      const q=it.ref;
+      const d=el("div","ritem");
+      d.appendChild(el("div","rq",'<span class="mono" style="color:var(--muted)">'+esc(q.id)+'</span> '+esc(q.q)));
+      if(it.picked!=null && wrong){
+        d.appendChild(el("div","ra bad",'<span class="m">✗ Ваш:</span><span>'+esc(q.opts[it.order[it.picked]])+'</span>'));
+      }
+      d.appendChild(el("div","ra good",'<span class="m">✓ Верно:</span><span>'+esc(q.opts[q.a])+'</span>'));
+      d.appendChild(el("div","rexp",esc(q.exp)));
+      list.appendChild(d);
+    });
+    if(only&&wrongN===0) list.appendChild(el("p","best","Ошибок нет — отлично!"));
+  }
+  bAll.onclick=()=>draw(false); bWrong.onclick=()=>draw(true);
+  draw(S.mode==="exam");
+  app.appendChild(rev);
+  window.scrollTo(0,0);
+}
+
+/* theme toggle */
+document.getElementById("theme").onclick=function(){
+  const cur=document.documentElement.getAttribute("data-theme");
+  const next = cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme:dark)").matches?"light":"dark"));
+  document.documentElement.setAttribute("data-theme",next);
+  try{ localStorage.setItem("ecs_theme",next); }catch(e){}
+};
+try{ const t=localStorage.getItem("ecs_theme"); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}
+
+renderHome();
+</script>
+</body>
+</html>
